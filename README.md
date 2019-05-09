@@ -22,6 +22,7 @@ The plugin targets [Next 8 serverless mode](https://nextjs.org/blog/next-8/#serv
 - [Overriding page configuration](#overriding-page-configuration)
 - [Custom page routing](#custom-page-routing)
 - [Custom error page](#custom-error-page)
+- [Remove error page](#remove-error-page)
 - [Custom lambda handler](#custom-lambda-handler)
 - [Examples](#examples)
 - [Contributing](#contributing)
@@ -277,6 +278,17 @@ class Error extends React.Component {
 }
 
 export default Error;
+```
+
+## Remove error page
+
+When using the [serverless-import-apigateway](https://github.com/MikeSouza/serverless-import-apigateway) plugin you may want to have a wildcard route ({page+}) configured elsewhere on the gateway. The problem is Next.js tries to handle this with a catch-all error page by default. You can override this behaviour with `omitErrorPage`.
+
+```yml
+custom:
+  serverless-nextjs:
+    nextConfigDir: ./
+    omitErrorPage: true
 ```
 
 ## Custom lambda handler

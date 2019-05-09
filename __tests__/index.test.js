@@ -100,6 +100,7 @@ describe("ServerlessNextJsPlugin", () => {
         expect(build).toBeCalledWith(
           new PluginBuildDir(nextConfigDir),
           pageConfig,
+          undefined,
           undefined
         );
       });
