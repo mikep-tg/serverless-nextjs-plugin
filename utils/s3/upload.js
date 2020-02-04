@@ -7,11 +7,24 @@ const get = require("./get");
 const logger = require("../logger");
 const debug = require("debug")("sls-next:s3");
 
-const getUploadParameters = (bucket, filePath, prefix, rootPrefix) => {
+const getUploadParameters = (
+  bucket,
+  filePath,
+  truncate,
+  rootPrefix,
+  CacheControl
+) => {
   let key = pathToPosix(filePath);
 
-  if (prefix) {
-    key = key.substring(key.indexOf(prefix), key.length);
+  if (truncate) {
+    const pathSegments = key.split(path.posix.sep);
+    const prefixIndex = pathSegments.indexOf(truncate);
+
+    if (prefixIndex !== -1) {
+      key = pathSegments
+        .slice(prefixIndex, pathSegments.length)
+        .join(path.posix.sep);
+    }
   }
 
   if (rootPrefix) {
@@ -22,6 +35,7 @@ const getUploadParameters = (bucket, filePath, prefix, rootPrefix) => {
     ACL: "public-read",
     Bucket: bucket,
     Key: key,
+    CacheControl,
     ContentType: mime.getType(key),
     Body: fse.createReadStream(filePath)
   };
@@ -30,10 +44,33 @@ const getUploadParameters = (bucket, filePath, prefix, rootPrefix) => {
 const filesAreEqual = (s3Object, fStats) =>
   s3Object && fStats.size === s3Object.Size;
 
-module.exports = awsProvider => (
+const cacheHeaderFactory = (buildId = "", rootPrefix) => {
+  // Check the paht for the following:
+  // (1) chunk/* (2) build_id/* and (3) runtime/*
+  // and return cache control header if true
+  const buildIdRegex = buildId.length ? `|${buildId}` : "";
+  const useCacheControlHeaderRegex = new RegExp(
+    `.*(?:chunk|runtime${buildIdRegex})`
+  );
+
+  return item => {
+    let CacheControl = undefined;
+    if (
+      rootPrefix === "_next" &&
+      useCacheControlHeaderRegex.test(path.dirname(item.path))
+    ) {
+      CacheControl = "public, max-age=31536000, immutable";
+    }
+
+    return CacheControl;
+  };
+};
+
+module.exports = (awsProvider, buildId) => (
   dir,
-  { bucket, prefix = null, rootPrefix = null }
+  { bucket, truncate = null, rootPrefix = null }
 ) => {
+  const getCacheHeader = cacheHeaderFactory(buildId, rootPrefix);
   const getObjectFromS3 = get(awsProvider);
   const promises = [];
 
@@ -44,11 +81,13 @@ module.exports = awsProvider => (
       .on("data", item => {
         const p = fse.lstat(item.path).then(async stats => {
           if (!stats.isDirectory()) {
+            const CacheControl = getCacheHeader(item);
             const uploadParams = getUploadParameters(
               bucket,
               item.path,
-              prefix,
-              rootPrefix
+              truncate,
+              rootPrefix,
+              CacheControl
             );
 
             const s3Object = await getObjectFromS3(uploadParams.Key, bucket);
@@ -58,7 +97,12 @@ module.exports = awsProvider => (
               return Promise.resolve();
             }
 
-            debug(`uploading to s3 - ${uploadParams.Key}`);
+            debug(
+              `uploading to s3 - ${uploadParams.Key} ${
+                CacheControl ? " with cachecontrol " + CacheControl : ""
+              }`
+            );
+
             return awsProvider("S3", "upload", uploadParams);
           }
         });

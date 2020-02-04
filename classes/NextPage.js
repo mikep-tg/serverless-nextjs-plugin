@@ -5,9 +5,11 @@ const toPosix = require("../utils/pathToPosix");
 const PluginBuildDir = require("./PluginBuildDir");
 
 class NextPage {
-  constructor(pagePath, serverlessFunctionOverrides) {
+  constructor(pagePath, { serverlessFunctionOverrides, routes } = {}) {
+    this.isApi = pagePath.indexOf(path.join("sls-next-build", "api")) === 0;
     this.pagePath = pagePath;
     this.serverlessFunctionOverrides = serverlessFunctionOverrides;
+    this.routes = routes;
   }
 
   get pageOriginalPath() {
@@ -22,6 +24,22 @@ class NextPage {
     return path.dirname(this.pagePath);
   }
 
+  get pageId() {
+    const pathSegments = this.pagePath.split(path.sep);
+
+    // strip out the parent build directory from path
+    // sls-next-build/foo/bar.js -> /foo/bar.js
+    const relativePathSegments = pathSegments.slice(
+      pathSegments.indexOf(PluginBuildDir.BUILD_DIR_NAME) + 1,
+      pathSegments.length
+    );
+
+    // remove extension
+    // foo/bar.js -> /foo/bar
+    const parsed = path.parse(relativePathSegments.join(path.posix.sep));
+    return path.posix.join(parsed.dir, parsed.name);
+  }
+
   get pageName() {
     return path.basename(this.pagePath, ".js");
   }
@@ -34,15 +52,18 @@ class NextPage {
   }
 
   get functionName() {
-    if (this.pageName === "_error") {
-      return "notFoundErrorPage";
+    if (this.pageId === "_error") {
+      return "not-found";
     }
 
-    return this.pageName + "Page";
+    return this.pageId
+      .replace(new RegExp(path.posix.sep, "g"), "-")
+      .replace(/^-/, "")
+      .replace(/[^\w-]/g, "_");
   }
 
   get pageRoute() {
-    switch (this.pageName) {
+    switch (this.pageId) {
       case "index":
         return "/";
       case "_error":
@@ -62,7 +83,12 @@ class NextPage {
           .slice(buildDirIndex + 1, pathSegments.length - 1)
           .concat([this.pageName]);
 
-        return routeSegments.join("/");
+        const originalPath = routeSegments.join("/");
+        const pathWithReplacedBrackets = originalPath
+          .replace(/\[/g, "{")
+          .replace(/\]/g, "}");
+
+        return pathWithReplacedBrackets;
     }
   }
 
@@ -73,7 +99,7 @@ class NextPage {
         {
           http: {
             path: this.pageRoute,
-            method: "get"
+            method: this.isApi ? "any" : "get"
           }
         }
       ]
@@ -84,6 +110,15 @@ class NextPage {
       delete this.serverlessFunctionOverrides.runtime;
 
       merge(configuration, this.serverlessFunctionOverrides);
+    }
+
+    if (this.routes && this.routes.length > 0) {
+      configuration.events = [];
+
+      this.routes.forEach(r => {
+        const httpEvent = this.getHttpEventForRoute(r);
+        configuration.events.push(httpEvent);
+      });
     }
 
     const httpHeadEvents = this.getMatchingHttpHeadEvents(
@@ -103,6 +138,17 @@ class NextPage {
       headEvent.http.method = "head";
       return headEvent;
     });
+  }
+
+  getHttpEventForRoute(route) {
+    const httpEvent = {
+      http: {
+        method: "get",
+        ...route
+      }
+    };
+
+    return httpEvent;
   }
 }
 

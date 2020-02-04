@@ -9,11 +9,10 @@ stage: dev
 region: eu-west-1
 
 plugins:
-  - serverless-nextjs
+  - serverless-nextjs-plugin
 
 custom:
   serverless-nextjs:
-    nextConfigDir: ./
     customHandler: ./my-lambda-handler.js
 
 package:

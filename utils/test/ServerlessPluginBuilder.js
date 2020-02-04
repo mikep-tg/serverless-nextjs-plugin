@@ -9,7 +9,11 @@ class ServerlessPluginBuilder {
       },
       getPlugins: () => {},
       getProvider: () => {
-        return { request: () => {} };
+        return {
+          request: () => {},
+          getRegion: () => "us-east-1",
+          getStage: () => "test"
+        };
       },
       pluginManager: {
         run: () => {}
@@ -48,7 +52,7 @@ class ServerlessPluginBuilder {
     return this;
   }
 
-  withNextCustomConfig(config) {
+  withPluginConfig(config) {
     merge(this.serverless, {
       service: {
         custom: {
@@ -61,7 +65,9 @@ class ServerlessPluginBuilder {
   }
 
   build() {
-    return new ServerlessNextJsPlugin(this.serverless, {});
+    const plugin = new ServerlessNextJsPlugin(this.serverless, {});
+    plugin.initializeVariables();
+    return plugin;
   }
 }
 
