@@ -1,3 +1,5 @@
+.idea
+*.swp
 node_modules
 /coverage.data
 /coverage/
@@ -5,4 +7,12 @@ examples/basic-next-serverless-app/build
 .serverless
 .next
 sls-next-build
-package-lock.json
+.serverless_nextjs
+**/examples/**/package-lock.json
+.DS_Store
+dist
+.vscode
+.env
+.package-lock.json
+yarn-error.log
+instructions.txt

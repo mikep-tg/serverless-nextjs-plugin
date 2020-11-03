@@ -1,8 +1,11 @@
 {
-  "name": "serverless-nextjs-plugin",
+  "name": "serverless-nextjs-monorepo",
   "version": "2.4.4-4",
-  "description": "A serverless plugin for nextjs 8 serverless target",
+  "description": "Deploy your serverless next applications using the serverless framework",
   "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
   "keywords": [
     "serverless",
     "nextjs",
@@ -11,64 +14,115 @@
     "api gateway"
   ],
   "scripts": {
-    "coveralls": "jest --coverage && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
+    "test": "jest --runInBand --coverage",
+    "packages-install": "lerna exec -- yarn install --frozen-lockfile",
+    "packages-build": "lerna run build",
+    "test:watch": "yarn test --watch --collect-coverage=false",
+    "check-gh-token": ": \"${GH_TOKEN:?Please set GH_TOKEN to a GitHub personal token that can create releases.}\"",
+    "publish": "yarn check-gh-token && lerna publish --conventional-commits --exact --create-release github",
+    "prerelease": "yarn check-gh-token && lerna publish --conventional-commits --conventional-prerelease --exact --create-release github --dist-tag alpha",
+    "graduate": "yarn check-gh-token && lerna publish --conventional-commits --conventional-graduate --exact --create-release github",
     "lint": "eslint .",
-    "integration": "jest --config jest.integration.config.json --setupTestFrameworkScriptFile=./jest.integration.setup.js",
-    "test": "jest"
-  },
-  "author": "Daniel Conde Marin <danielconde9@gmail.com>",
-  "license": "ISC",
-  "peerDependencies": {
-    "next": "^8.0.0"
-  },
-  "devDependencies": {
-    "adm-zip": "^0.4.13",
-    "coveralls": "^3.0.3",
-    "eslint": "^5.14.1",
-    "eslint-config-prettier": "^4.1.0",
-    "eslint-plugin-prettier": "^3.0.1",
-    "jest": "^24.1.0",
-    "next": "^8.0.4",
-    "prettier": "^1.16.4",
-    "react": "^16.8.6",
-    "react-dom": "^16.8.6",
-    "serverless": "^1.38.0"
+    "coveralls": "cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
+    "integration": "jest --runInBand --config jest.integration.config.json --setupTestFrameworkScriptFile=./jest.integration.setup.js",
+    "postinstall": "yarn packages-install && opencollective-postinstall || true",
+    "docs": "cd documentation && yarn && yarn build"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/danielcondemarin/serverless-nextjs-plugin.git"
+    "url": "https://github.com/serverless-nextjs/serverless-next.js"
   },
-  "dependencies": {
-    "@mapbox/s3urls": "^1.5.3",
-    "chalk": "^2.4.2",
-    "debug": "^4.1.1",
-    "fs-extra": "^7.0.1",
-    "js-yaml": "^3.12.1",
-    "klaw": "^3.0.0",
-    "lodash.clonedeep": "^4.5.0",
-    "lodash.merge": "^4.6.1",
-    "mime": "^2.4.0"
+  "author": "Daniel Conde Marin <danielconde9@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/serverless-nextjs/serverless-next.js/issues"
+  },
+  "homepage": "https://github.com/serverless-nextjs/serverless-next.js#readme",
+  "devDependencies": {
+    "@babel/preset-typescript": "^7.10.4",
+    "@sls-next/lambda-at-edge": "link:./packages/libs/lambda-at-edge",
+    "@sls-next/next-aws-cloudfront": "link:./packages/compat-layers/lambda-at-edge-compat",
+    "@types/fs-extra": "^9.0.1",
+    "@types/jest": "^26.0.3",
+    "@types/react": "^16.9.41",
+    "@types/react-dom": "^16.9.8",
+    "@types/webpack": "^4.41.18",
+    "@typescript-eslint/eslint-plugin": "^3.5.0",
+    "@typescript-eslint/parser": "^3.5.0",
+    "adm-zip": "^0.4.16",
+    "coveralls": "^3.1.0",
+    "eslint": "^7.3.1",
+    "eslint-config-prettier": "^6.11.0",
+    "eslint-plugin-prettier": "^3.1.4",
+    "fs-extra": "^9.0.1",
+    "husky": "^4.2.5",
+    "jest": "^26.1.0",
+    "jest-when": "^2.7.2",
+    "lerna": "^3.22.1",
+    "lint-staged": "^10.2.11",
+    "next": "^9.4.4",
+    "prettier": "^2.0.5",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "serverless": "^1.74.1",
+    "serverless-offline": "^6.4.0",
+    "typescript": "^3.9.6"
   },
   "jest": {
     "clearMocks": true,
     "collectCoverage": true,
     "collectCoverageFrom": [
-      "index.js",
-      "lib/**/*.js",
-      "utils/**/*.js",
-      "classes/**/*.js"
+      "<rootDir>/packages/**/*.{js,ts}"
     ],
+    "moduleNameMapper": {
+      "fs-extra": "<rootDir>/node_modules/fs-extra"
+    },
     "coverageDirectory": "<rootDir>/coverage/",
     "coveragePathIgnorePatterns": [
-      "lib/cfSchema.js",
-      "<rootDir>/utils/test"
+      "<rootDir>/packages/deprecated/serverless-plugin/utils/yml/cfSchema.js",
+      "<rootDir>/packages/deprecated/serverless-plugin/utils/test",
+      "/.serverless_nextjs/",
+      "/fixtures/",
+      "/fixture/",
+      "/examples/",
+      "/dist/",
+      "/tests/"
     ],
-    "modulePathIgnorePatterns": [
-      "<rootDir>/examples/",
-      "<rootDir>/integration"
+    "watchPathIgnorePatterns": [
+      "/fixture/",
+      "/fixtures/"
+    ],
+    "testPathIgnorePatterns": [
+      "<rootDir>/packages/deprecated/serverless-plugin/*",
+      "/.next/",
+      "/node_modules/",
+      "/fixtures/",
+      "/fixture/",
+      "/examples/",
+      "/integration/",
+      "/cypress/"
+    ],
+    "setupFiles": [
+      "<rootDir>/jest.setup.js"
     ]
   },
-  "engines": {
-    "node": ">=8.5.0"
+  "dependencies": {
+    "opencollective-postinstall": "^2.0.3"
+  },
+  "collective": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/serverless-nextjs-plugin"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,md,yml}": "prettier --write"
+  },
+  "resolutions": {
+    "which": "^2.0.1",
+    "lodash": "^4.17.19"
   }
 }
