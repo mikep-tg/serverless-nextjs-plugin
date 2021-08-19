@@ -1,0 +1,31 @@
+org: onegarden
+app: site-ui
+service: basic-next-serverless-app
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  memorySize: 512
+
+  stage: mike
+  region: eu-west-1
+
+plugins:
+  - serverless-nextjs-plugin
+  - serverless-offline
+
+# custom:
+#   serverless-nextjs:
+#     routes:
+#       - src: post
+#         path: post/{slug}
+#         request:
+#           parameters:
+#             paths:
+#               slug: true
+
+package:
+  # exclude everything
+  # page handlers are automatically included by the plugin
+  exclude:
+    - ./**
