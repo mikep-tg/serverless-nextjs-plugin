@@ -1,12 +1,14 @@
+org: onegarden
+app: site-ui
 service: basic-next-serverless-app
 
 provider:
   name: aws
-  runtime: nodejs8.10
+  runtime: nodejs14.x
   memorySize: 512
 
-stage: dev
-region: eu-west-1
+  stage: mike
+  region: eu-west-1
 
 plugins:
   - serverless-nextjs-plugin
